@@ -1,0 +1,29 @@
+{
+  "id": "travala-plugin",
+  "name": "Travala Booking",
+  "description": "Travala hotel booking integration with MCP and skills — by GoPlausible",
+  "version": "1.0.0",
+  "skills": [
+    "skills/travala-booking-expert"
+  ],
+  "activation": {
+    "commands": ["travala-plugin"]
+  },
+  "commandAliases": [
+    {
+      "name": "travala-plugin",
+      "description": "Travala hotel booking integration (GoPlausible)"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {}
+  },
+  "setup": {
+    "summary": "Sync workspace memory, register travala-mcp (remote, http) with mcporter, and add the plugin to OpenClaw's allow list.",
+    "postSetup": {
+      "message": "Restart the OpenClaw gateway to apply changes. travala-mcp is auto-registered in ~/.mcporter/mcporter.json on first load. Hotel payment uses USDC via the Algorand x402 flow — install the GoPlausible Algorand plugin (or algorand-mcp) so `make_http_request_with_x402` is available to complete bookings."
+    }
+  }
+}

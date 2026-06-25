@@ -1,0 +1,61 @@
+{
+  "name": "@goplausible/travala-plugin-openclaw",
+  "version": "1.0.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "description": "Travala hotel booking integration for OpenClaw — by GoPlausible",
+  "author": "GoPlausible <info@goplausible.com>",
+  "homepage": "https://goplausible.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GoPlausible/openclaw-algorand-plugin"
+  },
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "travala",
+    "travel",
+    "hotel",
+    "booking",
+    "mcp",
+    "x402",
+    "goplausible"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "build": "rm -rf dist && tsc && test -f dist/index.js && test -f dist/setup.js && test -f dist/lib/mcp-servers.js",
+    "tag": "git tag -a \"travala-v$npm_package_version\" -m \"travala-v$npm_package_version\" && git push origin \"travala-v$npm_package_version\"",
+    "retag": "git tag -d \"travala-v$npm_package_version\" 2>/dev/null; git push origin \":refs/tags/travala-v$npm_package_version\" 2>/dev/null; git tag -a \"travala-v$npm_package_version\" -m \"travala-v$npm_package_version\" && git push origin \"travala-v$npm_package_version\"",
+    "prepublishOnly": "npm run build",
+    "publish:npm": "npm publish --access public",
+    "publish:clawhub": "npm run build && clawhub package publish . --family code-plugin --name @goplausible/travala-plugin-openclaw --display-name 'Travala Plugin' --version \"$npm_package_version\" --tags latest --source-repo GoPlausible/openclaw-algorand-plugin --source-commit \"$(git rev-parse \"travala-v$npm_package_version\")\" --source-ref \"travala-v$npm_package_version\""
+  },
+  "files": [
+    "index.ts",
+    "setup.ts",
+    "lib/",
+    "dist/",
+    "skills/",
+    "memory/",
+    "openclaw.plugin.json"
+  ],
+  "openclaw": {
+    "extensions": ["./index.ts"],
+    "build": {
+      "openclawVersion": "2026.3.14"
+    },
+    "compat": {
+      "pluginApi": ">=2026.3.14",
+      "minGatewayVersion": "2026.3.14"
+    }
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.3.14"
+  },
+  "devDependencies": {
+    "@types/node": "20.0.0"
+  }
+}
