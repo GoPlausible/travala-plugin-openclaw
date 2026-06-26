@@ -36,16 +36,53 @@ The Algorand MCP has none of these constraints: plain stdio, key-based signing, 
 
 ## Installation
 
-From [ClawHub](https://clawhub.ai):
+1- Install the plugin from npm:
 
 ```bash
-clawhub install @goplausible/travala-plugin-openclaw
+openclaw plugins install @goplausible/travala-plugin-openclaw
+```
+2- Then restart the OpenClaw gateway:
+
+```bash
+openclaw gateway restart
 ```
 
-Or from a local path (source code):
+3- Then set it up:
 
 ```bash
-openclaw plugins install ./path/to/travala-plugin-openclaw
+openclaw travala-plugin setup
+```
+
+4- Then restart the OpenClaw gateway:
+
+```bash
+openclaw gateway restart
+```
+
+To update it:
+
+1- Update the plugin from npm:
+
+```bash
+openclaw plugins update @goplausible/travala-plugin-openclaw
+openclaw travala-plugin setup
+``` 
+2- Then set it up:
+
+```bash
+openclaw travala-plugin setup
+```
+
+3- Then set it up:
+
+```bash
+openclaw travala-plugin setup
+```
+
+4- Then restart the OpenClaw gateway:
+
+```bash
+openclaw gateway restart
 ```
 
 ## Configuration
