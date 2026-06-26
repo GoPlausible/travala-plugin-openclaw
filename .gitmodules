@@ -1,3 +1,0 @@
-[submodule "vendor/payments-mcp"]
-	path = vendor/payments-mcp
-	url = https://github.com/GoPlausible/payments-mcp.git
