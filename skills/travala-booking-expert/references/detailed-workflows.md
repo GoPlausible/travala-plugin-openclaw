@@ -38,7 +38,7 @@ Auth uses the **OAuth login** the user completes in their MCP connector. The con
 `hotelId` (req) + `sessionId`; re-provide `checkIn`/`checkOut`/`rooms` if the session may have expired. May return a new `sessionId` — use the latest.
 
 ### `travala_book`
-`packageId` (req), `sessionId` (req, latest), `customer.{firstName,lastName,email,phone}` (all req; phone with country code), `agentId` (always `"1001"`), `rewardWallet` (always `"0x6021A56A3F29F203f8D6fed43821aE39420A3f51"`). **Before calling:** show the summary + full cancellation policy, then display the **terms-consent text verbatim** ([Booking Conditions](https://www.travala.com/booking-terms) / [Terms and Conditions](https://www.travala.com/terms-and-conditions) / [Privacy Policy](https://www.travala.com/privacy-policy)), then get explicit USDC-on-Base payment confirmation. Response: typically HTTP 402 + `next_action` for x402 (see *Payment Flow*). Manage/cancel are authorized by the signed-in account.
+`packageId` (req), `sessionId` (req, latest), `customer.{firstName,lastName,email,phone}` (all req; phone with country code), `agentId` (always `"1001"`), `rewardWallet` (always `"REPLACEWITHYOURALGORANDREWARDWALLETADDRESSPLACEHOLDER23456"`). **Before calling:** show the summary + full cancellation policy, then display the **terms-consent text verbatim** ([Booking Conditions](https://www.travala.com/booking-terms) / [Terms and Conditions](https://www.travala.com/terms-and-conditions) / [Privacy Policy](https://www.travala.com/privacy-policy)), then get explicit USDC-on-Algorand payment confirmation. Response: typically HTTP 402 + `next_action` for x402 (see *Payment Flow*). Manage/cancel are authorized by the signed-in account.
 
 ### `travala_book_status` (Recovery)
 Recovers a prior `travala_book` result when the client lost the response (timeout, network error, "rejected by server"). **Read-only — never double-charges.** Always call BEFORE retrying `travala_book` after a failure. ⚠️ **Wait ~5s** before the first call — calling immediately tends to return `not_found` even when the booking ultimately succeeds. Params: `packageId` + `sessionId` (same as the failed call). Response `{httpStatus, body, interpretation}` — branch on `interpretation`:
@@ -75,18 +75,18 @@ Errors: same OTP error set as manage; "Failed to cancel booking" = not eligible 
 
 When `travala_book` returns 402:
 1. `tool_search` query `"make_http_request_with_x402"` to load the payment tool.
-2. Extract `next_action`; inform the user of the total USDC + network (Base; Base Sepolia in test).
-3. Explain: "To complete payment, authorize a USDC transaction through Coinbase on Base."
-4. Call `payments-mcp:make_http_request_with_x402` with the exact `next_action` fields:
+2. Extract `next_action`; inform the user of the total USDC + network (Algorand; Algorand testnet in test).
+3. Explain: "To complete payment, authorize a USDC transaction on Algorand via the x402 flow."
+4. Call `algorand-mcp:make_http_request_with_x402` with the exact `next_action` fields:
    ```json
-   { "tool": "payments-mcp:make_http_request_with_x402", "baseURL": "...", "path": "/m2m-payment/book", "method": "POST",
+   { "tool": "algorand-mcp:make_http_request_with_x402", "baseURL": "...", "path": "/m2m-payment/book", "method": "POST",
      "body": { "package_id": "...", "session_id": "...",
        "contact": { "given_name": "...", "sur_name": "...", "email": "...", "phone": "..." },
-       "agent_id": "1001", "reward_wallet": "0x6021A56A3F29F203f8D6fed43821aE39420A3f51" },
+       "agent_id": "1001", "reward_wallet": "REPLACEWITHYOURALGORANDREWARDWALLETADDRESSPLACEHOLDER23456" },
      "paymentRequirements": [ ... ] }
    ```
    (The server injects the caller's `authorized_email` into this body server-side so the paid booking binds to the right owner.)
-5. Never execute payment yourself — only pass `next_action` to the payments tool.
+5. Never execute payment yourself — only pass `next_action` to the algorand-mcp payment tool.
 6. **Clean success:** the x402 response body holds the final booking result (`bookingId`, hotel/room/dates). Confirm (Rule 3); note manage/cancel later from the same account.
 7. **Error / timeout / "rejected by server":** do NOT retry `travala_book`. Wait ~5s and call `travala_book_status` (same `packageId` + `sessionId`); branch on `interpretation`.
 

@@ -3,17 +3,16 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { TRAVALA_MCP, PAYMENTS_MCP, GOPLAUSIBLE_SERVICES } from "./lib/mcp-servers.js";
+import { TRAVALA_MCP, ALGORAND_MCP, GOPLAUSIBLE_SERVICES } from "./lib/mcp-servers.js";
 import { runSetup, type TravalaPluginConfig } from "./setup.js";
 import {
   isTravelMcpConfigured,
-  isPaymentsMcpConfigured,
-  isPaymentsMcpInstalled,
+  isAlgorandMcpConfigured,
   mcporterConfigPath,
-  paymentsMcpBundlePath,
   upsertTravelMcpConfig,
-  upsertPaymentsMcpConfig,
+  upsertAlgorandMcpConfig,
 } from "./lib/mcporter.js";
+import { prewarmAlgorandMcp } from "./lib/algorand-install.js";
 import {
   ensureWorkspaceMemoryIndex,
   resolveWorkspaceDir,
@@ -94,14 +93,13 @@ function register(api: OpenClawPluginApi) {
           console.log(`  ${travel.success ? "✅" : "⚠️"} ${travel.message}`);
           if (!travel.success) warnings.push({ step: "mcporter config (travala-mcp)", message: travel.message });
 
-          const payments = upsertPaymentsMcpConfig();
+          const payments = upsertAlgorandMcpConfig();
           console.log(`  ${payments.success ? "✅" : "⚠️"} ${payments.message}`);
-          if (!payments.success) warnings.push({ step: "mcporter config (payments-mcp)", message: payments.message });
+          if (!payments.success) warnings.push({ step: "mcporter config (algorand-mcp)", message: payments.message });
 
-          if (!isPaymentsMcpInstalled()) {
-            console.log(`  ⚠️  Payments MCP server not installed yet — run: ${PAYMENTS_MCP.installCommand}`);
-            warnings.push({ step: "payments-mcp server", message: `not installed — run ${PAYMENTS_MCP.installCommand}` });
-          }
+          const prewarm = prewarmAlgorandMcp();
+          console.log(`  ${prewarm.success ? "✅" : "⚠️"} ${prewarm.message}`);
+          if (!prewarm.success) warnings.push({ step: "algorand-mcp pre-fetch", message: prewarm.message });
 
           console.log("");
           const newConfig = await runSetup(pluginConfig);
@@ -142,8 +140,7 @@ function register(api: OpenClawPluginApi) {
         .description("Show Travala plugin status")
         .action(() => {
           const travelOk = isTravelMcpConfigured();
-          const paymentsCfgOk = isPaymentsMcpConfigured();
-          const paymentsInstalled = isPaymentsMcpInstalled();
+          const algorandOk = isAlgorandMcpConfigured();
 
           console.log("\n🧳 Travala Plugin Status\n");
           console.log("  Skills:");
@@ -151,15 +148,16 @@ function register(api: OpenClawPluginApi) {
           console.log("");
           console.log("  MCP Servers:");
           console.log(`    ${TRAVALA_MCP.id} (http):   ${travelOk ? "✅" : "⚠️ "} ${TRAVALA_MCP.baseUrl}`);
-          console.log(`    ${PAYMENTS_MCP.id} (stdio): ${paymentsCfgOk ? "✅" : "⚠️ "} ${paymentsInstalled ? paymentsMcpBundlePath() : `not installed — run ${PAYMENTS_MCP.installCommand}`}`);
+          console.log(`    ${ALGORAND_MCP.id} (stdio): ${algorandOk ? "✅" : "⚠️ "} ${ALGORAND_MCP.installCommand}`);
           console.log(`    mcporter.json:        ${mcporterConfigPath()}`);
           console.log("");
           console.log("  Payment:");
-          console.log(`    USDC on Base via x402 — handled by ${PAYMENTS_MCP.id}'s ${PAYMENTS_MCP.x402Tool}`);
-          console.log(`    Install: ${PAYMENTS_MCP.installCommand}`);
+          console.log(`    x402 micropayments (USDC/ALGO) — handled by ${ALGORAND_MCP.id}'s ${ALGORAND_MCP.x402Tool}`);
+          console.log(`    Headless: runs via npx, no GUI, no env vars required.`);
           console.log("");
           console.log("  Links:");
           console.log(`    GoPlausible: ${GOPLAUSIBLE_SERVICES.website}`);
+          console.log(`    Facilitator: ${GOPLAUSIBLE_SERVICES.facilitator}`);
           console.log("");
         });
 
@@ -177,23 +175,23 @@ function register(api: OpenClawPluginApi) {
           console.log(`        "url": "${TRAVALA_MCP.baseUrl}",`);
           console.log(`        "transport": "http"`);
           console.log(`      },`);
-          console.log(`      "${PAYMENTS_MCP.id}": {`);
-          console.log(`        "command": "node",`);
-          console.log(`        "args": ["${paymentsMcpBundlePath()}"]`);
+          console.log(`      "${ALGORAND_MCP.id}": {`);
+          console.log(`        "command": "npx",`);
+          console.log(`        "args": ["-y", "${ALGORAND_MCP.spec}"]`);
           console.log(`      }`);
           console.log(`    }`);
           console.log(`  }\n`);
           console.log(`  OpenClaw uses mcporter (~/.mcporter/mcporter.json); the plugin registers`);
           console.log(`  both servers automatically on first load.`);
-          console.log(`  Note: hotel payment uses USDC on Base via the x402 flow. Install the`);
-          console.log(`  Coinbase Payments MCP server so ${PAYMENTS_MCP.x402Tool} is available:`);
-          console.log(`    ${PAYMENTS_MCP.installCommand}\n`);
+          console.log(`  Note: hotel payment uses x402 micropayments (USDC/ALGO) via ${ALGORAND_MCP.id}'s`);
+          console.log(`  ${ALGORAND_MCP.x402Tool}. It is a headless stdio server fetched by npx —`);
+          console.log(`  no GUI and no env vars required.\n`);
         });
     },
     { commands: ["travala-plugin"] },
   );
 
-  api.logger.info(`Travala plugin registered (skills: 1, MCP: ${TRAVALA_MCP.name}, ${PAYMENTS_MCP.name})`);
+  api.logger.info(`Travala plugin registered (skills: 1, MCP: ${TRAVALA_MCP.name}, ${ALGORAND_MCP.name})`);
 }
 
 // Annotate the export so `tsc --declaration` can emit a portable .d.ts.

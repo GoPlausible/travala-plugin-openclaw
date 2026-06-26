@@ -1,4 +1,4 @@
-import { TRAVALA_MCP, PAYMENTS_MCP, GOPLAUSIBLE_SERVICES } from "./lib/mcp-servers.js";
+import { TRAVALA_MCP, ALGORAND_MCP, GOPLAUSIBLE_SERVICES } from "./lib/mcp-servers.js";
 
 export interface TravalaPluginConfig {
   // Reserved for future toggles. The Travala plugin currently has no
@@ -15,10 +15,11 @@ export async function runSetup(
   console.log("  MCP Servers:");
   console.log(`    ${TRAVALA_MCP.name} (remote, http) — hotel search, book, look up, cancel.`);
   console.log(`    Endpoint: ${TRAVALA_MCP.baseUrl}`);
-  console.log(`    ${PAYMENTS_MCP.name} (stdio) — x402 payment via ${PAYMENTS_MCP.x402Tool}.`);
+  console.log(`    ${ALGORAND_MCP.name} (headless stdio) — x402 payment via ${ALGORAND_MCP.x402Tool}.`);
+  console.log(`    Run: ${ALGORAND_MCP.installCommand}`);
   console.log(`    Both registered in ~/.mcporter/mcporter.json on first load.`);
-  console.log(`    Payment uses USDC on Base via the x402 flow. Install the payment server with:`);
-  console.log(`      ${PAYMENTS_MCP.installCommand}\n`);
+  console.log(`    Payment uses x402 micropayments (USDC/ALGO). The Algorand MCP is a headless`);
+  console.log(`    stdio server fetched by npx — no GUI, no env vars required.\n`);
 
   console.log("🧳 Travala plugin configured!\n");
   console.log("   Next step: restart OpenClaw gateway.");

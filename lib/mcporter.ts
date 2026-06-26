@@ -2,15 +2,10 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 
-import { TRAVALA_MCP, PAYMENTS_MCP } from "./mcp-servers.js";
+import { TRAVALA_MCP, ALGORAND_MCP } from "./mcp-servers.js";
 
 export function mcporterConfigPath(): string {
   return join(homedir(), ".mcporter", "mcporter.json");
-}
-
-/** Absolute path to the Coinbase Payments MCP stdio server bundle. */
-export function paymentsMcpBundlePath(): string {
-  return join(homedir(), PAYMENTS_MCP.installDirName, PAYMENTS_MCP.bundleFile);
 }
 
 type McporterStdioEntry = {
@@ -90,47 +85,41 @@ export function upsertTravelMcpConfig(): { success: boolean; message: string } {
   return { success: true, message: `${TRAVALA_MCP.id} registered in ${loaded.path}` };
 }
 
-/** True once the Coinbase Payments MCP server bundle has been installed. */
-export function isPaymentsMcpInstalled(): boolean {
-  return existsSync(paymentsMcpBundlePath());
-}
-
-export function isPaymentsMcpConfigured(): boolean {
+export function isAlgorandMcpConfigured(): boolean {
   const loaded = loadMcporterConfig();
   if (!loaded.ok) return false;
-  return Boolean(loaded.cfg.mcpServers?.[PAYMENTS_MCP.id]);
+  return Boolean(loaded.cfg.mcpServers?.[ALGORAND_MCP.id]);
 }
 
 /**
- * Register the Coinbase Payments MCP under mcpServers["payments-mcp"] as a
- * stdio server. mcporter infers the stdio transport from the presence of
- * `command` (vs `baseUrl` for HTTP). The server bundle is installed separately
- * via `npx @coinbase/payments-mcp`; this only writes the launch entry so the
- * skill's `payments-mcp:make_http_request_with_x402` calls resolve. We pin the
- * absolute node path (process.execPath) so the gateway can spawn the server
- * regardless of the PATH it runs under.
+ * Register the Algorand MCP under mcpServers["algorand-mcp"] as a stdio server.
+ * mcporter infers the stdio transport from the presence of `command` (vs
+ * `baseUrl` for HTTP). The server is a real headless npm package run via npx, so
+ * the launch entry is `npx -y @goplausible/algorand-mcp@<version>` — npx fetches
+ * and caches it on first use; no separate install or GUI is involved. This makes
+ * the skill's `algorand-mcp:make_http_request_with_x402` calls resolve.
  */
-export function upsertPaymentsMcpConfig(): { success: boolean; message: string } {
+export function upsertAlgorandMcpConfig(): { success: boolean; message: string } {
   const loaded = loadMcporterConfig();
   if (!loaded.ok) return { success: false, message: loaded.message };
 
   const entry: McporterStdioEntry = {
-    command: process.execPath,
-    args: [paymentsMcpBundlePath()],
-    description: PAYMENTS_MCP.description,
+    command: "npx",
+    args: ["-y", ALGORAND_MCP.spec],
+    description: ALGORAND_MCP.description,
   };
 
-  const existing = loaded.cfg.mcpServers[PAYMENTS_MCP.id];
+  const existing = loaded.cfg.mcpServers[ALGORAND_MCP.id];
   if (
     isStdioEntry(existing) &&
     existing.command === entry.command &&
     Array.isArray(existing.args) &&
-    existing.args[0] === entry.args?.[0]
+    existing.args.join(" ") === entry.args?.join(" ")
   ) {
-    return { success: true, message: `${PAYMENTS_MCP.id} already registered in ${loaded.path}` };
+    return { success: true, message: `${ALGORAND_MCP.id} already registered in ${loaded.path}` };
   }
 
-  loaded.cfg.mcpServers[PAYMENTS_MCP.id] = entry;
+  loaded.cfg.mcpServers[ALGORAND_MCP.id] = entry;
   writeFileSync(loaded.path, JSON.stringify(loaded.cfg, null, 2));
-  return { success: true, message: `${PAYMENTS_MCP.id} registered (stdio) in ${loaded.path}` };
+  return { success: true, message: `${ALGORAND_MCP.id} registered (stdio) in ${loaded.path}` };
 }

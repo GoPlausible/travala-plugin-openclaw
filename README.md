@@ -5,31 +5,34 @@
 ## Features
 
 - **Remote Travala MCP server**: `travala-mcp` (HTTP, `https://travel-mcp.travala.com/mcp`) — hotel search, package selection, booking, lookup, and cancellation
-- **Payment in USDC on Base via x402**: on `travala_book` HTTP 402, the agent completes payment through the Coinbase Payments MCP server's `make_http_request_with_x402` tool
-- **Two MCP servers auto-registered**: first-load init writes declarative entries into `~/.mcporter/mcporter.json` — `travala-mcp` (HTTP) and `payments-mcp` (stdio) — plus a memory file into the agent workspace. No `sudo`, no post-install hooks
+- **x402 payment via Algorand MCP**: on `travala_book` HTTP 402, the agent completes payment through the headless [Algorand MCP](https://github.com/GoPlausible/algorand-mcp) server's `make_http_request_with_x402` tool (USDC/ALGO)
+- **Two MCP servers auto-registered**: first-load init writes declarative entries into `~/.mcporter/mcporter.json` — `travala-mcp` (HTTP) and `algorand-mcp` (headless stdio, via npx) — plus a memory file into the agent workspace. No `sudo`, no post-install hooks
 - **1 Skill** — `travala-booking-expert`: the end-to-end hotel workflow (search → book → pay → look up → cancel), critical booking rules, OTP handling, and x402 payment recovery
 
 > **Hotels only** — no flights, car rentals, restaurants, tours, or activities.
 
-## Payment — Coinbase Payments MCP
+## Payment — Algorand MCP (headless x402)
 
-Booking and search work on their own, but **payment** uses the x402 flow via the [Coinbase Payments MCP](https://github.com/coinbase/payments-mcp) server (`payments-mcp`, stdio). On `travala_book` HTTP 402, the agent calls `payments-mcp:make_http_request_with_x402` (USDC on Base).
+Booking and search work on their own, but **payment** uses the x402 flow via [`@goplausible/algorand-mcp`](https://github.com/GoPlausible/algorand-mcp) (`algorand-mcp`, stdio). On `travala_book` HTTP 402, the agent calls `algorand-mcp:make_http_request_with_x402` (x402 micropayment in USDC/ALGO via the GoPlausible facilitator).
 
-Install the payment server once:
+It is a **real headless stdio MCP server** — fetched and run by npx, no GUI, **no environment variables required**. The agent wallet is a mnemonic stored in a local SQLite database managed by the server's own tools. The plugin registers the entry in mcporter automatically on first load:
 
-```bash
-npx @coinbase/payments-mcp
+```jsonc
+"algorand-mcp": { "command": "npx", "args": ["-y", "@goplausible/algorand-mcp@4.4.0"] }
 ```
 
-This downloads the stdio server to `~/.payments-mcp/` and sets up your wallet. The plugin registers the `payments-mcp` stdio entry in mcporter automatically on first load.
+`travala-plugin setup` also pre-fetches the package into the npm cache so the first booking doesn't wait on a cold download.
 
-We vendor the GoPlausible fork of the payments MCP as a git submodule under [`vendor/payments-mcp`](vendor/payments-mcp) for co-development; the runtime install still happens via npm/npx. Clone with submodules:
+### Why not Coinbase's payments-mcp?
 
-```bash
-git clone --recurse-submodules <repo-url>
-# or, in an existing checkout:
-git submodule update --init --recursive
-```
+An earlier iteration targeted `@coinbase/payments-mcp`. It was dropped because it is **fundamentally unfit for headless deployment** (Docker / VPS — OpenClaw's main target):
+
+- `@coinbase/payments-mcp` is an npx **installer** that downloads an **Electron desktop app**, not a server.
+- Every MCP tool (including `make_http_request_with_x402`) is a thin proxy that forwards to the app's **Chromium renderer window** (`sendToWindow(...)`), and the renderer loads a Coinbase-hosted URL. A live window must exist for *any* tool to work.
+- On a headless host there is no display, so the server **cannot run at all** — no sign-in, no payment. It is only viable on a desktop, or on Linux via `xvfb` + `--no-sandbox` + bundled Chromium libs (heavy, fragile, Linux-only).
+- Sign-in is an interactive Electron wallet-UI flow (email + OTP through the renderer), which a headless gateway can't drive.
+
+The Algorand MCP has none of these constraints: plain stdio, key-based signing, no browser. A full inventory of the Coinbase payments-mcp tools and their schemas (captured during evaluation, for peer-mapping) lives in [`.notes/coinbase-payments-mcp-tools.md`](.notes/coinbase-payments-mcp-tools.md).
 
 ## Installation
 
@@ -52,9 +55,9 @@ On first load, the plugin initializes idempotently:
 - Writes the plugin memory file into your agent workspace (`memory/travala-plugin.md`)
 - Adds a single pointer line under `## Plugin Routing` in your workspace `MEMORY.md`
 - Registers `travala-mcp` (remote, HTTP) in `~/.mcporter/mcporter.json`
-- Registers `payments-mcp` (Coinbase, stdio) in `~/.mcporter/mcporter.json`
+- Registers `algorand-mcp` (headless stdio, via npx) in `~/.mcporter/mcporter.json`
 
-Then install the payment server once (`npx @coinbase/payments-mcp`) and restart the OpenClaw gateway to apply changes.
+Then restart the OpenClaw gateway to apply changes. The Algorand MCP is fetched by npx on first use (no separate install step); `travala-plugin setup` pre-warms the npm cache.
 
 ## CLI
 
@@ -67,7 +70,6 @@ openclaw travala-plugin mcp-config   # print an MCP config snippet for external 
 ## Development
 
 ```bash
-git submodule update --init --recursive   # fetch vendor/payments-mcp
 npm install
 npm run build   # tsc → dist/
 ```

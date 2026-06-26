@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 
-import { upsertTravelMcpConfig, upsertPaymentsMcpConfig } from "./mcporter.js";
+import { upsertTravelMcpConfig, upsertAlgorandMcpConfig } from "./mcporter.js";
 
 const PLUGIN_ID = "travala-plugin";
 
@@ -97,7 +97,7 @@ export function runFirstLoadInit(api: WorkspaceApi, pluginRoot: string, workspac
   if (!existsSync(markerDir)) mkdirSync(markerDir, { recursive: true });
 
   api.logger.info(
-    `[travala-plugin] First-load setup: writing Travala routing reference to ${workspacePath}/memory/travala-plugin.md, adding a single pointer line under "## Plugin Routing" in ${workspacePath}/MEMORY.md (no always-loaded NEVER FORGET block), registering travala-mcp (remote, http) and payments-mcp (Coinbase, stdio) in ~/.mcporter/mcporter.json, and creating ${markerPath} so this runs only once. The Coinbase payments-mcp server bundle is installed separately via \`npx @coinbase/payments-mcp\`. The agent loads the routing reference on demand when Travala/hotel-booking keywords appear; remove the pointer line or the reference file to opt out.`,
+    `[travala-plugin] First-load setup: writing Travala routing reference to ${workspacePath}/memory/travala-plugin.md, adding a single pointer line under "## Plugin Routing" in ${workspacePath}/MEMORY.md (no always-loaded NEVER FORGET block), registering travala-mcp (remote, http) and algorand-mcp (headless stdio, via npx) in ~/.mcporter/mcporter.json, and creating ${markerPath} so this runs only once. The Algorand MCP server is fetched on demand by npx (no separate install, no GUI). The agent loads the routing reference on demand when Travala/hotel-booking keywords appear; remove the pointer line or the reference file to opt out.`,
   );
 
   const mem = writeMemoryFile(pluginRoot, workspacePath);
@@ -112,7 +112,7 @@ export function runFirstLoadInit(api: WorkspaceApi, pluginRoot: string, workspac
   if (travel.success) api.logger.info(`[travala-plugin] ${travel.message}`);
   else api.logger.warn(`[travala-plugin] ${travel.message}`);
 
-  const payments = upsertPaymentsMcpConfig();
+  const payments = upsertAlgorandMcpConfig();
   if (payments.success) api.logger.info(`[travala-plugin] ${payments.message}`);
   else api.logger.warn(`[travala-plugin] ${payments.message}`);
 
@@ -120,9 +120,9 @@ export function runFirstLoadInit(api: WorkspaceApi, pluginRoot: string, workspac
 }
 
 // The Travala plugin registers no native runtime tools — booking runs through
-// the remote travala-mcp server, and x402 payment runs through the Coinbase
-// payments-mcp server (`make_http_request_with_x402`). Both are MCP servers
-// registered with mcporter, so there is nothing to add to tools.alsoAllow.
+// the remote travala-mcp server, and x402 payment runs through the Algorand MCP
+// server (`make_http_request_with_x402`). Both are MCP servers registered with
+// mcporter, so there is nothing to add to tools.alsoAllow.
 const PLUGIN_TOOL_NAMES: readonly string[] = [];
 
 export function writePluginConfig(pluginConfig: Record<string, unknown>): { success: boolean; error?: string; changes?: string[] } {

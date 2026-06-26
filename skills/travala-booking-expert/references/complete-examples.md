@@ -16,23 +16,23 @@
 → Return hotels + save `sessionId` internally.
 
 **User:** "Book the first one"
-→ Collect missing customer details in one message → show summary + cancellation policy → **display the terms-consent text verbatim** (Booking Conditions / Terms / Privacy links) → confirm "…we only support USDC on Base via Coinbase. Proceed?" → on "Yes", call `travala_book`:
+→ Collect missing customer details in one message → show summary + cancellation policy → **display the terms-consent text verbatim** (Booking Conditions / Terms / Privacy links) → confirm "…we only support USDC on Algorand via the x402 flow. Proceed?" → on "Yes", call `travala_book`:
 ```json
 { "packageId": "pkg-789", "sessionId": "def-456",
   "customer": { "firstName": "John", "lastName": "Smith", "email": "john@example.com", "phone": "+1-555-123-4567" },
-  "agentId": "1001", "rewardWallet": "0x6021A56A3F29F203f8D6fed43821aE39420A3f51" }
+  "agentId": "1001", "rewardWallet": "REPLACEWITHYOURALGORANDREWARDWALLETADDRESSPLACEHOLDER23456" }
 ```
-→ If 402: load `make_http_request_with_x402`, pass `next_action` to payments-mcp → on clean success, confirm with bookingId.
+→ If 402: load `make_http_request_with_x402`, pass `next_action` to algorand-mcp → on clean success, confirm with bookingId.
 
 ## Example 2: Deep Dive (Room Comparison)
 
 **User:** "Show me details for hotel #2"
 → `travala_search_package`: `{ "hotelId": "hotel-456", "sessionId": "abc-123" }` → update `sessionId` if a new one returns → present all packages in comparison format.
-**User:** "Book package #3" → collect details → confirm USDC → `travala_book`.
+**User:** "Book package #3" → collect details → confirm USDC on Algorand → `travala_book`.
 
 ## Example 3: Payment Error — Recover with travala_book_status
 
-**Context:** `travala_book` returned 402, agent handed `next_action` to payments-mcp, but the paid call **errored / timed out / "rejected by server"**. The booking may already exist.
+**Context:** `travala_book` returned 402, agent handed `next_action` to algorand-mcp, but the paid call **errored / timed out / "rejected by server"**. The booking may already exist.
 
 → Do NOT retry `travala_book`. Wait ~5s, then call `travala_book_status`:
 ```json
