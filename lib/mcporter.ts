@@ -91,17 +91,46 @@ export function isAlgorandMcpConfigured(): boolean {
   return Boolean(loaded.cfg.mcpServers?.[ALGORAND_MCP.id]);
 }
 
+/** The actual `command [args…]` registered for algorand-mcp, or null if absent. */
+export function algorandMcpRegisteredCommand(): string | null {
+  const loaded = loadMcporterConfig();
+  if (!loaded.ok) return null;
+  const e = loaded.cfg.mcpServers[ALGORAND_MCP.id];
+  if (isStdioEntry(e)) return [e.command, ...(e.args ?? [])].join(" ");
+  return null;
+}
+
 /**
  * Register the Algorand MCP under mcpServers["algorand-mcp"] as a stdio server.
- * mcporter infers the stdio transport from the presence of `command` (vs
- * `baseUrl` for HTTP). The server is a real headless npm package run via npx, so
- * the launch entry is `npx -y @goplausible/algorand-mcp@<version>` — npx fetches
- * and caches it on first use; no separate install or GUI is involved. This makes
- * the skill's `algorand-mcp:make_http_request_with_x402` calls resolve.
+ * Our launch entry is `npx -y @goplausible/algorand-mcp@<version>` — npx fetches
+ * and caches it on first use; no separate install or GUI. This makes the skill's
+ * `algorand-mcp:make_http_request_with_x402` calls resolve.
+ *
+ * Conflict-avoidance: `algorand-mcp` is a shared singleton keyed by id. Another
+ * plugin (notably the GoPlausible Algorand plugin) may already register it,
+ * typically pointing at its OWN bundled binary by absolute path rather than npx.
+ * We never clobber a foreign entry — if one is present and it isn't ours (matched
+ * by our `description` marker), we leave it and reuse it. We only write/refresh
+ * our own npx entry when the key is absent or already ours (so version bumps
+ * still propagate). `registered` is true when we own the entry, false when we
+ * deferred to an existing foreign one.
  */
-export function upsertAlgorandMcpConfig(): { success: boolean; message: string } {
+export function upsertAlgorandMcpConfig(): { success: boolean; message: string; registered: boolean } {
   const loaded = loadMcporterConfig();
-  if (!loaded.ok) return { success: false, message: loaded.message };
+  if (!loaded.ok) return { success: false, message: loaded.message, registered: false };
+
+  const existing = loaded.cfg.mcpServers[ALGORAND_MCP.id];
+  const isOurs = isStdioEntry(existing) && existing.description === ALGORAND_MCP.description;
+
+  // A foreign entry (e.g. the Algorand plugin's bundled binary) — defer to it.
+  if (existing && !isOurs) {
+    const how = isStdioEntry(existing) ? `command "${existing.command}"` : "an existing entry";
+    return {
+      success: true,
+      registered: false,
+      message: `${ALGORAND_MCP.id} already provided in ${loaded.path} (${how}) — left as-is to avoid conflicts`,
+    };
+  }
 
   const entry: McporterStdioEntry = {
     command: "npx",
@@ -109,17 +138,17 @@ export function upsertAlgorandMcpConfig(): { success: boolean; message: string }
     description: ALGORAND_MCP.description,
   };
 
-  const existing = loaded.cfg.mcpServers[ALGORAND_MCP.id];
+  // Already ours and identical — nothing to write.
   if (
-    isStdioEntry(existing) &&
+    isOurs &&
     existing.command === entry.command &&
     Array.isArray(existing.args) &&
     existing.args.join(" ") === entry.args?.join(" ")
   ) {
-    return { success: true, message: `${ALGORAND_MCP.id} already registered in ${loaded.path}` };
+    return { success: true, registered: true, message: `${ALGORAND_MCP.id} already registered in ${loaded.path}` };
   }
 
   loaded.cfg.mcpServers[ALGORAND_MCP.id] = entry;
   writeFileSync(loaded.path, JSON.stringify(loaded.cfg, null, 2));
-  return { success: true, message: `${ALGORAND_MCP.id} registered (stdio) in ${loaded.path}` };
+  return { success: true, registered: true, message: `${ALGORAND_MCP.id} registered (stdio, via npx) in ${loaded.path}` };
 }

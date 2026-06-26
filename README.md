@@ -23,6 +23,10 @@ It is a **real headless stdio MCP server** — fetched and run by npx, no GUI, *
 
 `travala-plugin setup` also pre-fetches the package into the npm cache so the first booking doesn't wait on a cold download.
 
+#### Coexistence with the GoPlausible Algorand plugin
+
+`algorand-mcp` is a **shared singleton** keyed by id in `~/.mcporter/mcporter.json`. The GoPlausible [Algorand plugin](https://github.com/GoPlausible/openclaw-algorand-plugin) registers the **same** server, but from a binary it bundles in its own `node_modules` (absolute path) rather than via npx. If both plugins run on the same OpenClaw instance (e.g. a shared Docker/VPS), this plugin **defers to whatever is already registered** — it never overwrites a foreign `algorand-mcp` entry. It only registers its own npx-based entry when none exists, so it works standalone too. Net effect: one `algorand-mcp` server, no conflict, regardless of install order. (`travala-plugin status` shows which launch command is actually registered.)
+
 ### Why not Coinbase's payments-mcp?
 
 An earlier iteration targeted `@coinbase/payments-mcp`. It was dropped because it is **fundamentally unfit for headless deployment** (Docker / VPS — OpenClaw's main target):

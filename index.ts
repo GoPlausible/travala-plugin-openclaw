@@ -8,6 +8,7 @@ import { runSetup, type TravalaPluginConfig } from "./setup.js";
 import {
   isTravelMcpConfigured,
   isAlgorandMcpConfigured,
+  algorandMcpRegisteredCommand,
   mcporterConfigPath,
   upsertTravelMcpConfig,
   upsertAlgorandMcpConfig,
@@ -97,9 +98,16 @@ function register(api: OpenClawPluginApi) {
           console.log(`  ${payments.success ? "✅" : "⚠️"} ${payments.message}`);
           if (!payments.success) warnings.push({ step: "mcporter config (algorand-mcp)", message: payments.message });
 
-          const prewarm = prewarmAlgorandMcp();
-          console.log(`  ${prewarm.success ? "✅" : "⚠️"} ${prewarm.message}`);
-          if (!prewarm.success) warnings.push({ step: "algorand-mcp pre-fetch", message: prewarm.message });
+          // Only pre-fetch the npm package when WE own the npx entry. If another
+          // plugin (e.g. the Algorand plugin) already provides algorand-mcp from
+          // its bundled binary, there is nothing to fetch.
+          if (payments.registered) {
+            const prewarm = prewarmAlgorandMcp();
+            console.log(`  ${prewarm.success ? "✅" : "⚠️"} ${prewarm.message}`);
+            if (!prewarm.success) warnings.push({ step: "algorand-mcp pre-fetch", message: prewarm.message });
+          } else if (payments.success) {
+            console.log("  ℹ️  algorand-mcp is provided by an existing registration (e.g. the Algorand plugin) — skipping npx pre-fetch");
+          }
 
           console.log("");
           const newConfig = await runSetup(pluginConfig);
@@ -141,6 +149,7 @@ function register(api: OpenClawPluginApi) {
         .action(() => {
           const travelOk = isTravelMcpConfigured();
           const algorandOk = isAlgorandMcpConfigured();
+          const algorandCmd = algorandMcpRegisteredCommand();
 
           console.log("\n🧳 Travala Plugin Status\n");
           console.log("  Skills:");
@@ -148,7 +157,10 @@ function register(api: OpenClawPluginApi) {
           console.log("");
           console.log("  MCP Servers:");
           console.log(`    ${TRAVALA_MCP.id} (http):   ${travelOk ? "✅" : "⚠️ "} ${TRAVALA_MCP.baseUrl}`);
-          console.log(`    ${ALGORAND_MCP.id} (stdio): ${algorandOk ? "✅" : "⚠️ "} ${ALGORAND_MCP.installCommand}`);
+          console.log(`    ${ALGORAND_MCP.id} (stdio): ${algorandOk ? "✅" : "⚠️ "} ${algorandCmd ?? `not registered (would be: ${ALGORAND_MCP.installCommand})`}`);
+          if (algorandCmd && algorandCmd.split(" ")[0] !== "npx") {
+            console.log(`      ↳ provided by another plugin (e.g. the Algorand plugin) — shared, not managed by this plugin`);
+          }
           console.log(`    mcporter.json:        ${mcporterConfigPath()}`);
           console.log("");
           console.log("  Payment:");
