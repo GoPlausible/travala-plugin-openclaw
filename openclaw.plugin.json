@@ -21,9 +21,9 @@
     "properties": {}
   },
   "setup": {
-    "summary": "Sync workspace memory, register travala-mcp (remote, http) with mcporter, and add the plugin to OpenClaw's allow list.",
+    "summary": "Sync workspace memory, register travala-mcp (remote, http) and payments-mcp (Coinbase, stdio) with mcporter, and add the plugin to OpenClaw's allow list.",
     "postSetup": {
-      "message": "Restart the OpenClaw gateway to apply changes. travala-mcp is auto-registered in ~/.mcporter/mcporter.json on first load. Hotel payment uses USDC via the Algorand x402 flow — install the GoPlausible Algorand plugin (or algorand-mcp) so `make_http_request_with_x402` is available to complete bookings."
+      "message": "Restart the OpenClaw gateway to apply changes. travala-mcp and payments-mcp are auto-registered in ~/.mcporter/mcporter.json on first load. Hotel payment uses USDC on Base via the x402 flow — install the Coinbase Payments MCP server with `npx @coinbase/payments-mcp` so `make_http_request_with_x402` is available to complete bookings."
     }
   }
 }

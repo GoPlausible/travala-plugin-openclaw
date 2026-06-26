@@ -9,7 +9,7 @@
   "homepage": "https://goplausible.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/GoPlausible/openclaw-algorand-plugin"
+    "url": "https://github.com/GoPlausible/travala-plugin-openclaw"
   },
   "keywords": [
     "openclaw",
@@ -31,7 +31,7 @@
     "retag": "git tag -d \"travala-v$npm_package_version\" 2>/dev/null; git push origin \":refs/tags/travala-v$npm_package_version\" 2>/dev/null; git tag -a \"travala-v$npm_package_version\" -m \"travala-v$npm_package_version\" && git push origin \"travala-v$npm_package_version\"",
     "prepublishOnly": "npm run build",
     "publish:npm": "npm publish --access public",
-    "publish:clawhub": "npm run build && clawhub package publish . --family code-plugin --name @goplausible/travala-plugin-openclaw --display-name 'Travala Plugin' --version \"$npm_package_version\" --tags latest --source-repo GoPlausible/openclaw-algorand-plugin --source-commit \"$(git rev-parse \"travala-v$npm_package_version\")\" --source-ref \"travala-v$npm_package_version\""
+    "publish:clawhub": "npm run build && clawhub package publish . --family code-plugin --name @goplausible/travala-plugin-openclaw --display-name 'Travala Plugin' --version \"$npm_package_version\" --tags latest --source-repo GoPlausible/travala-plugin-openclaw --source-commit \"$(git rev-parse \"travala-v$npm_package_version\")\" --source-ref \"travala-v$npm_package_version\""
   },
   "files": [
     "index.ts",

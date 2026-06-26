@@ -2,10 +2,15 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 
-import { TRAVALA_MCP } from "./mcp-servers.js";
+import { TRAVALA_MCP, PAYMENTS_MCP } from "./mcp-servers.js";
 
 export function mcporterConfigPath(): string {
   return join(homedir(), ".mcporter", "mcporter.json");
+}
+
+/** Absolute path to the Coinbase Payments MCP stdio server bundle. */
+export function paymentsMcpBundlePath(): string {
+  return join(homedir(), PAYMENTS_MCP.installDirName, PAYMENTS_MCP.bundleFile);
 }
 
 type McporterStdioEntry = {
@@ -53,6 +58,10 @@ function isHttpEntry(entry: McporterServerEntry | undefined): entry is McporterH
   return !!entry && "baseUrl" in entry && typeof (entry as McporterHttpEntry).baseUrl === "string";
 }
 
+function isStdioEntry(entry: McporterServerEntry | undefined): entry is McporterStdioEntry {
+  return !!entry && "command" in entry && typeof (entry as McporterStdioEntry).command === "string";
+}
+
 export function isTravelMcpConfigured(): boolean {
   const loaded = loadMcporterConfig();
   if (!loaded.ok) return false;
@@ -79,4 +88,49 @@ export function upsertTravelMcpConfig(): { success: boolean; message: string } {
   loaded.cfg.mcpServers[TRAVALA_MCP.id] = entry;
   writeFileSync(loaded.path, JSON.stringify(loaded.cfg, null, 2));
   return { success: true, message: `${TRAVALA_MCP.id} registered in ${loaded.path}` };
+}
+
+/** True once the Coinbase Payments MCP server bundle has been installed. */
+export function isPaymentsMcpInstalled(): boolean {
+  return existsSync(paymentsMcpBundlePath());
+}
+
+export function isPaymentsMcpConfigured(): boolean {
+  const loaded = loadMcporterConfig();
+  if (!loaded.ok) return false;
+  return Boolean(loaded.cfg.mcpServers?.[PAYMENTS_MCP.id]);
+}
+
+/**
+ * Register the Coinbase Payments MCP under mcpServers["payments-mcp"] as a
+ * stdio server. mcporter infers the stdio transport from the presence of
+ * `command` (vs `baseUrl` for HTTP). The server bundle is installed separately
+ * via `npx @coinbase/payments-mcp`; this only writes the launch entry so the
+ * skill's `payments-mcp:make_http_request_with_x402` calls resolve. We pin the
+ * absolute node path (process.execPath) so the gateway can spawn the server
+ * regardless of the PATH it runs under.
+ */
+export function upsertPaymentsMcpConfig(): { success: boolean; message: string } {
+  const loaded = loadMcporterConfig();
+  if (!loaded.ok) return { success: false, message: loaded.message };
+
+  const entry: McporterStdioEntry = {
+    command: process.execPath,
+    args: [paymentsMcpBundlePath()],
+    description: PAYMENTS_MCP.description,
+  };
+
+  const existing = loaded.cfg.mcpServers[PAYMENTS_MCP.id];
+  if (
+    isStdioEntry(existing) &&
+    existing.command === entry.command &&
+    Array.isArray(existing.args) &&
+    existing.args[0] === entry.args?.[0]
+  ) {
+    return { success: true, message: `${PAYMENTS_MCP.id} already registered in ${loaded.path}` };
+  }
+
+  loaded.cfg.mcpServers[PAYMENTS_MCP.id] = entry;
+  writeFileSync(loaded.path, JSON.stringify(loaded.cfg, null, 2));
+  return { success: true, message: `${PAYMENTS_MCP.id} registered (stdio) in ${loaded.path}` };
 }
