@@ -36,7 +36,7 @@ An earlier iteration targeted `@coinbase/payments-mcp`. It was dropped because i
 - On a headless host there is no display, so the server **cannot run at all** — no sign-in, no payment. It is only viable on a desktop, or on Linux via `xvfb` + `--no-sandbox` + bundled Chromium libs (heavy, fragile, Linux-only).
 - Sign-in is an interactive Electron wallet-UI flow (email + OTP through the renderer), which a headless gateway can't drive.
 
-The Algorand MCP has none of these constraints: plain stdio, key-based signing, no browser. A full inventory of the Coinbase payments-mcp tools and their schemas (captured during evaluation, for peer-mapping) lives in [`.notes/coinbase-payments-mcp-tools.md`](.notes/coinbase-payments-mcp-tools.md).
+The Algorand MCP has none of these constraints: plain stdio, key-based signing, no browser. A full inventory of the Coinbase payments-mcp tools and their schemas was captured during evaluation for peer mapping.
 
 ## Installation
 
@@ -69,7 +69,6 @@ To update it:
 
 ```bash
 openclaw plugins update @goplausible/travala-plugin-openclaw
-openclaw travala-plugin setup
 ``` 
 2- Then set it up:
 
@@ -77,13 +76,7 @@ openclaw travala-plugin setup
 openclaw travala-plugin setup
 ```
 
-3- Then set it up:
-
-```bash
-openclaw travala-plugin setup
-```
-
-4- Then restart the OpenClaw gateway:
+3- Then restart the OpenClaw gateway:
 
 ```bash
 openclaw gateway restart
